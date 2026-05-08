@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>유통기한 체크리스트</title>
+<title>Expiry Date</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Apple SD Gothic Neo',system-ui,sans-serif;background:#f7f7f5;color:#222;min-height:100vh}
@@ -38,7 +38,6 @@ textarea.finput{resize:vertical;min-height:70px;line-height:1.6}
 .btn-main{width:100%;padding:13px;border-radius:12px;font-size:15px;font-weight:700;border:none;cursor:pointer;background:#222;color:#fff;margin-top:10px}
 .btn-sub{width:100%;padding:12px;border-radius:12px;font-size:14px;font-weight:600;border:1px solid #ddd;cursor:pointer;background:#f5f5f5;color:#555;margin-top:6px}
 .memo-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-left:5px;vertical-align:middle}
-.del-btn{font-size:11px;background:none;border:none;cursor:pointer;padding:2px 0}
 .memo-box{background:#fffbea;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;color:#555;line-height:1.6;white-space:pre-wrap}
 .empty{text-align:center;color:#bbb;padding:48px 0;font-size:15px}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;align-items:flex-end;justify-content:center}
@@ -51,13 +50,15 @@ mark{background:#fff176;border-radius:3px;padding:0 1px}
 .sub-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .setting-row{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px 16px;margin-bottom:12px}
 .danger-btn{width:100%;padding:12px;border-radius:12px;font-size:14px;font-weight:600;border:1px solid #ffcdd2;cursor:pointer;background:#fff5f5;color:#c62828;margin-top:8px}
+.toggle{width:44px;height:24px;border-radius:12px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;border:none}
+.toggle-thumb{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left .2s}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="htitle-sub">EXPIRY TRACKER</div>
-    <div class="htitle">✨ 유통기한 체크리스트 ✨</div>
+    <div class="htitle-sub" id="title-sub" style="display:none"></div>
+    <div class="htitle" id="title-main">✨ Expiry Date ✨</div>
     <div class="tabs">
       <button class="tab on" onclick="goTab('home',this)">홈</button>
       <button class="tab" onclick="goTab('list',this)">목록</button>
@@ -86,11 +87,9 @@ mark{background:#fff176;border-radius:3px;padding:0 1px}
       <option value="cosmetics">💄 화장품</option>
     </select>
     <label class="flabel">세부 분류</label>
-    <select class="finput" id="f-sub" onchange="renderPaoPreview()"></select>
+    <select class="finput" id="f-sub"></select>
     <label class="flabel">📦 보관 위치</label>
-    <select class="finput" id="f-location">
-      <option value="">선택 안함</option>
-    </select>
+    <select class="finput" id="f-location"></select>
     <label class="flabel">유통기한</label>
     <input class="finput" id="f-expiry" type="date">
     <div id="f-pao-wrap" style="display:none">
@@ -130,13 +129,22 @@ if(!items){items=[...DEFAULT_ITEMS];saveItems();}
 let subs=JSON.parse(localStorage.getItem('subs')||JSON.stringify(DEFAULT_SUBS));
 let pao=JSON.parse(localStorage.getItem('pao')||JSON.stringify(DEFAULT_PAO));
 let locations=JSON.parse(localStorage.getItem('locations')||JSON.stringify(DEFAULT_LOCATIONS));
+let titleCfg=JSON.parse(localStorage.getItem('titleCfg')||'{"main":"✨ Expiry Date ✨","sub":"EXPIRY TRACKER","showSub":false}');
 
 function saveItems(){localStorage.setItem('items',JSON.stringify(items));}
 function saveSubs(){localStorage.setItem('subs',JSON.stringify(subs));}
 function savePao(){localStorage.setItem('pao',JSON.stringify(pao));}
 function saveLocations(){localStorage.setItem('locations',JSON.stringify(locations));}
+function saveTitleCfg(){localStorage.setItem('titleCfg',JSON.stringify(titleCfg));}
 
-let currentTab='home',filterCat='all',searchQ='',editId=null,homeFilter=null,settingTab='location',settingCat='food';
+function applyTitle(){
+  document.getElementById('title-main').textContent=titleCfg.main;
+  const subEl=document.getElementById('title-sub');
+  subEl.textContent=titleCfg.sub;
+  subEl.style.display=titleCfg.showSub?'block':'none';
+}
+
+let currentTab='home',filterCat='all',searchQ='',homeFilter=null,settingTab='location',settingCat='food';
 const today=new Date();today.setHours(0,0,0,0);
 
 function daysLeft(d){if(!d)return null;const x=new Date(d);x.setHours(0,0,0,0);return Math.ceil((x-today)/86400000);}
@@ -192,7 +200,8 @@ function startEdit(id){
     '<div><label class="flabel" style="font-size:12px">개봉일</label>'
     +'<input class="finput" type="date" id="e-opened" value="'+(item.openedDate||'')+'" oninput="renderEditPao('+id+')" style="padding:8px 10px;font-size:13px">'
     +'<div id="epao-prev">'+paoBarHtml(item.openedDate,item.sub)+'</div></div>':'';
-  const html='<div class="card" style="border:2px solid '+c.accent+'">'
+  document.getElementById('card-'+id).outerHTML=
+    '<div class="card" style="border:2px solid '+c.accent+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
     +'<span style="font-weight:700;font-size:14px;color:'+c.accent+'">✏️ 수정 중</span>'
     +'<div style="display:flex;gap:8px">'
@@ -208,7 +217,6 @@ function startEdit(id){
     +paoWrap
     +'<textarea class="finput" id="e-note" rows="2" style="margin-top:6px;padding:8px 10px;font-size:13px">'+item.note+'</textarea>'
     +'</div>';
-  document.getElementById('card-'+id).outerHTML=html;
 }
 function onEditCatChange(id){
   const cat=document.getElementById('e-cat').value;
@@ -224,12 +232,13 @@ function renderEditPao(id){
 function saveEdit(id){
   const name=document.getElementById('e-name').value.trim();
   if(!name){alert('제품명을 입력해주세요');return;}
-  const obj={name,category:document.getElementById('e-cat').value,sub:document.getElementById('e-sub').value,
+  items=items.map(i=>i.id===id?{...i,name,
+    category:document.getElementById('e-cat').value,
+    sub:document.getElementById('e-sub').value,
     location:document.getElementById('e-location').value,
     expiry:document.getElementById('e-expiry').value,
     openedDate:document.getElementById('e-opened')?.value||'',
-    note:document.getElementById('e-note').value.trim()};
-  items=items.map(i=>i.id===id?{...i,...obj}:i);
+    note:document.getElementById('e-note').value.trim()}:i);
   saveItems();render();
 }
 function cancelEdit(){render();}
@@ -292,12 +301,10 @@ function renderList(){
   src.sort((a,b)=>(daysLeft(a.expiry)||9999)-(daysLeft(b.expiry)||9999));
   let h='<div class="search-wrap"><span class="search-icon">🔍</span>'
     +'<input placeholder="제품명, 분류, 위치, 메모 검색" value="'+searchQ.replace(/"/g,'&quot;')+'" oninput="searchQ=this.value;renderList()"></div>';
-  h+='<div class="ftabs">'
-    +['all','food','bathroom','cosmetics'].map(function(k){
-      const lbl=k==='all'?'전체 ('+items.length+')':k==='food'?'🍽 식품':k==='bathroom'?'🛁 생활용품':'💄 화장품';
-      const on=filterCat===k;
-      return'<button class="ftab '+(on?'on':'')+'" onclick="filterCat=\''+k+'\';render()">'+lbl+'</button>';
-    }).join('')+'</div>';
+  h+='<div class="ftabs">'+['all','food','bathroom','cosmetics'].map(function(k){
+    const lbl=k==='all'?'전체 ('+items.length+')':k==='food'?'🍽 식품':k==='bathroom'?'🛁 생활용품':'💄 화장품';
+    return'<button class="ftab '+(filterCat===k?'on':'')+'" onclick="filterCat=\''+k+'\';render()">'+lbl+'</button>';
+  }).join('')+'</div>';
   if(src.length===0)h+='<div class="empty">'+(q?'검색 결과가 없습니다':'등록된 제품이 없습니다')+'</div>';
   else src.forEach(function(item){h+=itemHtml(item,q);});
   h+='<button class="btn-main" onclick="openModal()" style="margin-top:4px">+ 새 제품 등록</button>';
@@ -327,61 +334,87 @@ function renderSettings(){
     return'<button onclick="settingTab=\''+k+'\';renderSettings()" style="flex:1;padding:10px 0;border-radius:12px;border:1px solid #ddd;font-size:13px;font-weight:700;cursor:pointer;background:'+(settingTab===k?'#222':'#fff')+';color:'+(settingTab===k?'#fff':'#666')+'">'+lbl+'</button>';
   }).join('');
 
-  let content='';
+  // 타이틀 설정
+  const titleSection='<div class="setting-row">'
+    +'<div style="font-weight:600;font-size:14px;margin-bottom:12px">🏷️ 타이틀 설정</div>'
+    +'<label style="font-size:13px;color:#555;font-weight:500">메인 타이틀</label>'
+    +'<input class="finput" id="s-main" value="'+titleCfg.main.replace(/"/g,'&quot;')+'" style="margin-top:4px">'
+    +'<button onclick="saveMainTitle()" style="width:100%;padding:9px;border-radius:9px;border:none;background:#222;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px">저장</button>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-top:14px">'
+    +'<span style="font-size:13px;color:#555;font-weight:500">서브 타이틀 표시</span>'
+    +'<button class="toggle" style="background:'+(titleCfg.showSub?'#222':'#ddd')+'" onclick="toggleSubTitle()">'
+    +'<div class="toggle-thumb" style="left:'+(titleCfg.showSub?'22':'2')+'px"></div></button></div>'
+    +(titleCfg.showSub?'<label style="font-size:13px;color:#555;font-weight:500;display:block;margin-top:10px">서브 타이틀</label>'
+    +'<input class="finput" id="s-sub" value="'+titleCfg.sub.replace(/"/g,'&quot;')+'" style="margin-top:4px">'
+    +'<button onclick="saveSubTitle()" style="width:100%;padding:9px;border-radius:9px;border:none;background:#222;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px">저장</button>':'')
+    +'</div>';
 
-  if(settingTab==='location'){
-    const rows=locations.map(function(l,i){
-      return'<div class="sub-row">'
-        +'<div style="flex:1;padding:7px 10px;background:#f9f9f9;border:1px solid #eee;border-radius:8px;font-size:13px">📦 '+l+'</div>'
-        +'<button onclick="editLocation('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;color:#555">수정</button>'
-        +'<button onclick="deleteLocation('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ffcdd2;background:#fff5f5;font-size:12px;cursor:pointer;color:#c62828">삭제</button>'
-        +'</div>';
-    }).join('');
-    content='<div class="setting-row">'
-      +'<div style="font-weight:600;font-size:14px;margin-bottom:4px">보관 위치 관리</div>'
-      +'<div style="font-size:12px;color:#aaa;margin-bottom:12px;line-height:1.6">이사 후 실제 보관 장소에 맞게 수정해주세요 😊</div>'
-      +rows
-      +'<div style="display:flex;gap:6px;margin-top:8px">'
-      +'<input id="new-loc" placeholder="새 보관 위치 입력" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')addLocation()">'
-      +'<button onclick="addLocation()" style="padding:8px 14px;border-radius:8px;border:none;background:#222;color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 추가</button>'
-      +'</div></div>';
-  } else {
-    const catBtns=Object.entries(CATS).map(function([k,v]){
-      return'<button onclick="settingCat=\''+k+'\';renderSettings()" style="flex:1;padding:8px 0;border-radius:10px;border:1px solid #ddd;font-size:13px;font-weight:600;cursor:pointer;background:'+(settingCat===k?v.accent:'#fff')+';color:'+(settingCat===k?'#fff':'#666')+'">'+v.icon+' '+v.label+'</button>';
-    }).join('');
-    const list=subs[settingCat]||[];
-    const rows=list.map(function(s,i){
-      const paoInput=settingCat==='bathroom'?
-        '<input type="number" value="'+(pao[s]||12)+'" min="1" max="60" onchange="updatePao(\''+s+'\',this.value)" style="width:52px;padding:6px;border:1px solid #ddd;border-radius:8px;font-size:12px;text-align:center">':'';
-      return'<div class="sub-row">'
-        +'<div style="flex:1;padding:7px 10px;background:#f9f9f9;border:1px solid #eee;border-radius:8px;font-size:13px">'+s+(settingCat==='bathroom'?'<span style="font-size:11px;color:#aaa;margin-left:6px">('+( pao[s]||12)+'개월)</span>':'')+'</div>'
-        +'<button onclick="editSub('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;color:#555">수정</button>'
-        +'<button onclick="deleteSub('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ffcdd2;background:#fff5f5;font-size:12px;cursor:pointer;color:#c62828">삭제</button>'
-        +paoInput+'</div>';
-    }).join('');
-    content='<div class="setting-row">'
-      +'<div style="font-weight:600;font-size:14px;margin-bottom:12px">세부 분류 관리</div>'
-      +'<div style="display:flex;gap:7px;margin-bottom:12px">'+catBtns+'</div>'
-      +(settingCat==='bathroom'?'<div style="font-size:12px;color:#aaa;margin-bottom:10px">오른쪽 숫자 = 개봉 후 사용기한(개월)</div>':'')
-      +rows
-      +'<div style="display:flex;gap:6px;margin-top:8px">'
-      +'<input id="new-sub" placeholder="새 분류 입력" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')addSub()">'
-      +'<button onclick="addSub()" style="padding:8px 14px;border-radius:8px;border:none;background:'+CATS[settingCat].accent+';color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 추가</button>'
-      +'</div></div>';
-  }
+  // 보관 위치
+  let locRows=locations.map(function(l,i){
+    return'<div class="sub-row">'
+      +'<div style="flex:1;padding:7px 10px;background:#f9f9f9;border:1px solid #eee;border-radius:8px;font-size:13px">📦 '+l+'</div>'
+      +'<button onclick="editLocation('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;color:#555">수정</button>'
+      +'<button onclick="deleteLocation('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ffcdd2;background:#fff5f5;font-size:12px;cursor:pointer;color:#c62828">삭제</button>'
+      +'</div>';
+  }).join('');
+  const locSection='<div class="setting-row">'
+    +'<div style="font-weight:600;font-size:14px;margin-bottom:4px">보관 위치 관리</div>'
+    +'<div style="font-size:12px;color:#aaa;margin-bottom:12px;line-height:1.6">이사 후 실제 보관 장소에 맞게 수정해주세요 😊</div>'
+    +locRows
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+    +'<input id="new-loc" placeholder="새 보관 위치 입력" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')addLocation()">'
+    +'<button onclick="addLocation()" style="padding:8px 14px;border-radius:8px;border:none;background:#222;color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 추가</button>'
+    +'</div></div>';
+
+  // 세부 분류
+  const catBtns=Object.entries(CATS).map(function([k,v]){
+    return'<button onclick="settingCat=\''+k+'\';renderSettings()" style="flex:1;padding:8px 0;border-radius:10px;border:1px solid #ddd;font-size:13px;font-weight:600;cursor:pointer;background:'+(settingCat===k?v.accent:'#fff')+';color:'+(settingCat===k?'#fff':'#666')+'">'+v.icon+' '+v.label+'</button>';
+  }).join('');
+  let subRows=(subs[settingCat]||[]).map(function(s,i){
+    return'<div class="sub-row">'
+      +'<div style="flex:1;padding:7px 10px;background:#f9f9f9;border:1px solid #eee;border-radius:8px;font-size:13px">'+s+(settingCat==='bathroom'?'<span style="font-size:11px;color:#aaa;margin-left:6px">('+( pao[s]||12)+'개월)</span>':'')+'</div>'
+      +'<button onclick="editSub('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;color:#555">수정</button>'
+      +'<button onclick="deleteSub('+i+')" style="padding:6px 10px;border-radius:8px;border:1px solid #ffcdd2;background:#fff5f5;font-size:12px;cursor:pointer;color:#c62828">삭제</button>'
+      +(settingCat==='bathroom'?'<input type="number" value="'+(pao[s]||12)+'" min="1" max="60" onchange="updatePao(\''+s+'\',this.value)" style="width:52px;padding:6px;border:1px solid #ddd;border-radius:8px;font-size:12px;text-align:center">':'')
+      +'</div>';
+  }).join('');
+  const subSection='<div class="setting-row">'
+    +'<div style="font-weight:600;font-size:14px;margin-bottom:12px">세부 분류 관리</div>'
+    +'<div style="display:flex;gap:7px;margin-bottom:12px">'+catBtns+'</div>'
+    +(settingCat==='bathroom'?'<div style="font-size:12px;color:#aaa;margin-bottom:10px">오른쪽 숫자 = 개봉 후 사용기한(개월)</div>':'')
+    +subRows
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+    +'<input id="new-sub" placeholder="새 분류 입력" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')addSub()">'
+    +'<button onclick="addSub()" style="padding:8px 14px;border-radius:8px;border:none;background:'+CATS[settingCat].accent+';color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 추가</button>'
+    +'</div></div>';
 
   document.getElementById('settings').innerHTML=
     '<div style="font-weight:700;font-size:17px;margin-bottom:16px">⚙️ 설정</div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:16px">'+tabBtns+'</div>'
-    +content
-    +'<div class="setting-row" style="margin-top:8px">'
+    +titleSection
+    +'<div style="display:flex;gap:8px;margin-bottom:12px;margin-top:4px">'+tabBtns+'</div>'
+    +(settingTab==='location'?locSection:subSection)
+    +'<div class="setting-row">'
     +'<div style="font-weight:600;font-size:14px;margin-bottom:4px">데이터 초기화</div>'
     +'<div style="font-size:12px;color:#aaa;margin-bottom:8px">모든 데이터를 기본값으로 되돌립니다.</div>'
-    +'<button class="danger-btn" onclick="resetAll()">전체 초기화</button>'
-    +'</div>';
+    +'<button class="danger-btn" onclick="resetAll()">전체 초기화</button></div>';
 }
 
-// 보관 위치 관리
+// 타이틀
+function saveMainTitle(){
+  const v=document.getElementById('s-main').value.trim();
+  if(!v)return;
+  titleCfg.main=v;saveTitleCfg();applyTitle();alert('저장됐어요!');
+}
+function saveSubTitle(){
+  const v=document.getElementById('s-sub').value.trim();
+  if(!v)return;
+  titleCfg.sub=v;saveTitleCfg();applyTitle();alert('저장됐어요!');
+}
+function toggleSubTitle(){
+  titleCfg.showSub=!titleCfg.showSub;saveTitleCfg();applyTitle();renderSettings();
+}
+
+// 보관 위치
 function addLocation(){
   const v=document.getElementById('new-loc').value.trim();
   if(!v)return;
@@ -390,51 +423,55 @@ function addLocation(){
 }
 function editLocation(i){
   const v=prompt('보관 위치 수정',locations[i]);
-  if(!v||!v.trim())return;
-  locations[i]=v.trim();saveLocations();renderSettings();
+  if(v&&v.trim()){locations[i]=v.trim();saveLocations();renderSettings();}
 }
 function deleteLocation(i){
-  if(!confirm('"'+locations[i]+'" 삭제할까요?'))return;
-  locations.splice(i,1);saveLocations();renderSettings();
+  if(confirm('"'+locations[i]+'" 삭제할까요?')){locations.splice(i,1);saveLocations();renderSettings();}
 }
 
-// 세부 분류 관리
+// 세부 분류
 function addSub(){
   const v=document.getElementById('new-sub').value.trim();
   if(!v)return;
   if((subs[settingCat]||[]).includes(v)){alert('이미 있는 분류예요!');return;}
-  subs[settingCat]=[...(subs[settingCat]||[]),v];
-  saveSubs();renderSettings();
+  subs[settingCat]=[...(subs[settingCat]||[]),v];saveSubs();renderSettings();
 }
 function editSub(i){
   const old=subs[settingCat][i];
   const v=prompt('분류 이름 수정',old);
-  if(!v||!v.trim()||v.trim()===old)return;
-  subs[settingCat][i]=v.trim();
-  items=items.map(function(item){return item.category===settingCat&&item.sub===old?Object.assign({},item,{sub:v.trim()}):item;});
-  saveItems();saveSubs();renderSettings();
+  if(v&&v.trim()&&v.trim()!==old){
+    subs[settingCat][i]=v.trim();
+    items=items.map(function(item){return item.category===settingCat&&item.sub===old?Object.assign({},item,{sub:v.trim()}):item;});
+    saveItems();saveSubs();renderSettings();
+  }
 }
 function deleteSub(i){
-  if(!confirm('"'+subs[settingCat][i]+'" 삭제할까요?'))return;
-  subs[settingCat].splice(i,1);saveSubs();renderSettings();
+  if(confirm('"'+subs[settingCat][i]+'" 삭제할까요?')){subs[settingCat].splice(i,1);saveSubs();renderSettings();}
 }
 function updatePao(sub,val){pao[sub]=parseInt(val)||12;savePao();renderSettings();}
+
 function resetAll(){
   if(confirm('모든 데이터를 초기화할까요?')){
-    items=[...DEFAULT_ITEMS];subs=JSON.parse(JSON.stringify(DEFAULT_SUBS));
-    pao=JSON.parse(JSON.stringify(DEFAULT_PAO));locations=[...DEFAULT_LOCATIONS];
-    saveItems();saveSubs();savePao();saveLocations();
-    alert('초기화 완료!');goTab('home',document.querySelector('.tab'));
+    items=[...DEFAULT_ITEMS];
+    subs=JSON.parse(JSON.stringify(DEFAULT_SUBS));
+    pao=JSON.parse(JSON.stringify(DEFAULT_PAO));
+    locations=[...DEFAULT_LOCATIONS];
+    titleCfg={main:"✨ Expiry Date ✨",sub:"EXPIRY TRACKER",showSub:false};
+    saveItems();saveSubs();savePao();saveLocations();saveTitleCfg();
+    applyTitle();alert('초기화 완료!');
+    goTab('home',document.querySelector('.tab'));
   }
 }
 
-function fillLocationOptions(selectedVal){
-  const el=document.getElementById('f-location');
-  el.innerHTML='<option value="">선택 안함</option>'+locations.map(l=>'<option value="'+l+'"'+(l===selectedVal?' selected':'')+'>'+l+'</option>').join('');
+function fillSubs(cat){
+  document.getElementById('f-sub').innerHTML=(subs[cat]||[]).map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+}
+function fillLocations(selected){
+  document.getElementById('f-location').innerHTML='<option value="">선택 안함</option>'+locations.map(l=>'<option value="'+l+'"'+(l===selected?' selected':'')+'>'+l+'</option>').join('');
 }
 function onCatChange(){
   const cat=document.getElementById('f-cat').value;
-  document.getElementById('f-sub').innerHTML=(subs[cat]||[]).map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+  fillSubs(cat);
   document.getElementById('f-pao-wrap').style.display=cat==='bathroom'?'':'none';
   renderPaoPreview();
 }
@@ -451,7 +488,7 @@ function openModal(category){
   document.getElementById('f-note').value='';
   document.getElementById('f-cat').value=category||'food';
   onCatChange();
-  fillLocationOptions('');
+  fillLocations('');
   document.getElementById('modal').classList.add('show');
 }
 function closeModal(e){
@@ -471,6 +508,7 @@ function saveItem(){
   saveItems();closeModal();goTab('list',document.querySelectorAll('.tab')[1]);
 }
 
+applyTitle();
 render();
 </script>
 </body>
