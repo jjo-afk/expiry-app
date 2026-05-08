@@ -230,16 +230,34 @@ function renderEditPao(id){
   if(el)el.innerHTML=opened?paoBarHtml(opened,sub):'';
 }
 function saveEdit(id){
-  const name=document.getElementById('e-name').value.trim();
+  const nameEl=document.getElementById('e-name');
+  const catEl=document.getElementById('e-cat');
+  const subEl=document.getElementById('e-sub');
+  const locEl=document.getElementById('e-location');
+  const expiryEl=document.getElementById('e-expiry');
+  const openedEl=document.getElementById('e-opened');
+  const noteEl=document.getElementById('e-note');
+  if(!nameEl){alert('오류가 발생했어요. 다시 시도해주세요.');return;}
+  const name=nameEl.value.trim();
   if(!name){alert('제품명을 입력해주세요');return;}
-  items=items.map(i=>i.id===id?{...i,name,
-    category:document.getElementById('e-cat').value,
-    sub:document.getElementById('e-sub').value,
-    location:document.getElementById('e-location').value,
-    expiry:document.getElementById('e-expiry').value,
-    openedDate:document.getElementById('e-opened')?.value||'',
-    note:document.getElementById('e-note').value.trim()}:i);
-  saveItems();render();
+  const updated={
+    name:name,
+    category:catEl?catEl.value:'food',
+    sub:subEl?subEl.value:'',
+    location:locEl?locEl.value:'',
+    expiry:expiryEl?expiryEl.value:'',
+    openedDate:openedEl?openedEl.value:'',
+    note:noteEl?noteEl.value.trim():''
+  };
+  for(var i=0;i<items.length;i++){
+    if(items[i].id===id){
+      items[i]=Object.assign({},items[i],updated);
+      break;
+    }
+  }
+  try{localStorage.setItem('items',JSON.stringify(items));}catch(e){console.error(e);}
+  render();
+  window.scrollTo(0,0);
 }
 function cancelEdit(){render();}
 function deleteItem(id){if(confirm('삭제할까요?')){items=items.filter(i=>i.id!==id);saveItems();render();}}
