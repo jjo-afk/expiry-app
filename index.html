@@ -105,31 +105,31 @@ mark{background:#fff176;border-radius:3px;padding:0 1px}
 </div>
 
 <script>
-const CATS={
+var CATS={
   food:{label:"식품",icon:"🍽",accent:"#2e7d32"},
   bathroom:{label:"생활용품",icon:"🛁",accent:"#1565c0"},
   cosmetics:{label:"화장품",icon:"💄",accent:"#880e4f"}
 };
-const DEFAULT_SUBS={
+var DEFAULT_SUBS={
   food:["소스 / 조미료","냉동식품","라면 / 건식품","유제품","음료 / 주류","기타 식품"],
   bathroom:["샴푸","린스","컨디셔너","바디워시","핸드크림","치약"],
   cosmetics:["스킨케어 / 기초","색조화장품","선크림 / 기능성","기타 화장품"]
 };
-const DEFAULT_PAO={"샴푸":12,"린스":12,"컨디셔너":12,"바디워시":12,"핸드크림":12,"치약":3};
-const DEFAULT_LOCATIONS=["냉장고","냉동실","수납장","욕실장","선반","기타"];
-const DEFAULT_ITEMS=[
+var DEFAULT_PAO={"샴푸":12,"린스":12,"컨디셔너":12,"바디워시":12,"핸드크림":12,"치약":3};
+var DEFAULT_LOCATIONS=["냉장고","냉동실","수납장","욕실장","선반","기타"];
+var DEFAULT_ITEMS=[
   {id:1,name:"고추장",category:"food",sub:"소스 / 조미료",expiry:"2025-12-01",openedDate:"",note:"",location:""},
   {id:2,name:"냉동만두",category:"food",sub:"냉동식품",expiry:"2025-08-15",openedDate:"",note:"냉동 보관 필수",location:"냉동실"},
   {id:3,name:"샴푸",category:"bathroom",sub:"샴푸",expiry:"2026-11-01",openedDate:"2025-11-01",note:"",location:"욕실장"},
   {id:4,name:"수분크림",category:"cosmetics",sub:"스킨케어 / 기초",expiry:"2026-03-10",openedDate:"",note:"눈가 전용, 아침에만 사용",location:""},
 ];
 
-let items=JSON.parse(localStorage.getItem('items')||'null');
-if(!items){items=[...DEFAULT_ITEMS];saveItems();}
-let subs=JSON.parse(localStorage.getItem('subs')||JSON.stringify(DEFAULT_SUBS));
-let pao=JSON.parse(localStorage.getItem('pao')||JSON.stringify(DEFAULT_PAO));
-let locations=JSON.parse(localStorage.getItem('locations')||JSON.stringify(DEFAULT_LOCATIONS));
-let titleCfg=JSON.parse(localStorage.getItem('titleCfg')||'{"main":"⏰","sub":"EXPIRY TRACKER","showSub":false}');
+var items=JSON.parse(localStorage.getItem('items')||'null');
+if(!items){items=DEFAULT_ITEMS.slice();saveItems();}
+var subs=JSON.parse(localStorage.getItem('subs')||JSON.stringify(DEFAULT_SUBS));
+var pao=JSON.parse(localStorage.getItem('pao')||JSON.stringify(DEFAULT_PAO));
+var locations=JSON.parse(localStorage.getItem('locations')||JSON.stringify(DEFAULT_LOCATIONS));
+var titleCfg=JSON.parse(localStorage.getItem('titleCfg')||'{"main":"⏰","sub":"EXPIRY TRACKER","showSub":false}');
 
 function saveItems(){try{localStorage.setItem('items',JSON.stringify(items));}catch(e){console.error(e);}}
 function saveSubs(){localStorage.setItem('subs',JSON.stringify(subs));}
@@ -144,7 +144,7 @@ function applyTitle(){
   subEl.style.display=titleCfg.showSub?'block':'none';
 }
 
-let currentTab='home',filterCat='all',searchQ='',homeFilter=null,settingTab='location',settingCat='food';
+var currentTab='home',filterCat='all',searchQ='',homeFilter=null,settingTab='location',settingCat='food';
 var today=new Date();today.setHours(0,0,0,0);
 
 function daysLeft(d){if(!d)return null;var x=new Date(d);x.setHours(0,0,0,0);return Math.ceil((x-today)/86400000);}
@@ -235,7 +235,6 @@ function renderEditPao(id){
   var el=document.getElementById('epao-prev');
   if(el&&openedEl)el.innerHTML=openedEl.value?paoBarHtml(openedEl.value,subEl?subEl.value:item.sub):'';
 }
-
 function saveEdit(id){
   var nameEl=document.getElementById('e-name');
   var catEl=document.getElementById('e-cat');
@@ -257,23 +256,16 @@ function saveEdit(id){
     note:noteEl?noteEl.value.trim():''
   };
   for(var i=0;i<items.length;i++){
-    if(items[i].id===id){
-      items[i]=Object.assign({},items[i],updated);
-      break;
-    }
+    if(items[i].id===id){items[i]=Object.assign({},items[i],updated);break;}
   }
-  saveItems();
-  render();
-  window.scrollTo(0,0);
+  saveItems();render();window.scrollTo(0,0);
 }
-
 function cancelEdit(){render();}
 function deleteItem(id){
   if(confirm('삭제할까요?')){
     var newItems=[];
     for(var i=0;i<items.length;i++){if(items[i].id!==id)newItems.push(items[i]);}
-    items=newItems;
-    saveItems();render();
+    items=newItems;saveItems();render();
   }
 }
 
@@ -367,7 +359,6 @@ function renderSettings(){
   var tabBtns=[['location','📦 보관 위치'],['sub','📂 세부 분류']].map(function(arr){
     return'<button onclick="settingTab=\''+arr[0]+'\';renderSettings()" style="flex:1;padding:10px 0;border-radius:12px;border:1px solid #ddd;font-size:13px;font-weight:700;cursor:pointer;background:'+(settingTab===arr[0]?'#222':'#fff')+';color:'+(settingTab===arr[0]?'#fff':'#666')+'">'+arr[1]+'</button>';
   }).join('');
-
   var titleSection='<div class="setting-row">'
     +'<div style="font-weight:600;font-size:14px;margin-bottom:12px">🏷️ 타이틀 설정</div>'
     +'<label style="font-size:13px;color:#555;font-weight:500">메인 타이틀</label>'
@@ -381,7 +372,6 @@ function renderSettings(){
     +'<input class="finput" id="s-sub" value="'+titleCfg.sub.replace(/"/g,'&quot;')+'" style="margin-top:4px">'
     +'<button onclick="saveSubTitle()" style="width:100%;padding:9px;border-radius:9px;border:none;background:#222;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px">저장</button>':'')
     +'</div>';
-
   var locRows=locations.map(function(l,i){
     return'<div class="sub-row">'
       +'<div style="flex:1;padding:7px 10px;background:#f9f9f9;border:1px solid #eee;border-radius:8px;font-size:13px">📦 '+l+'</div>'
@@ -397,7 +387,6 @@ function renderSettings(){
     +'<input id="new-loc" placeholder="새 보관 위치 입력" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')addLocation()">'
     +'<button onclick="addLocation()" style="padding:8px 14px;border-radius:8px;border:none;background:#222;color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 추가</button>'
     +'</div></div>';
-
   var catBtns=Object.entries(CATS).map(function(e){
     return'<button onclick="settingCat=\''+e[0]+'\';renderSettings()" style="flex:1;padding:8px 0;border-radius:10px;border:1px solid #ddd;font-size:13px;font-weight:600;cursor:pointer;background:'+(settingCat===e[0]?e[1].accent:'#fff')+';color:'+(settingCat===e[0]?'#fff':'#666')+'">'+e[1].icon+' '+e[1].label+'</button>';
   }).join('');
@@ -418,7 +407,6 @@ function renderSettings(){
     +'<input id="new-sub" placeholder="새 분류 입력" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px" onkeydown="if(event.key===\'Enter\')addSub()">'
     +'<button onclick="addSub()" style="padding:8px 14px;border-radius:8px;border:none;background:'+CATS[settingCat].accent+';color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 추가</button>'
     +'</div></div>';
-
   document.getElementById('settings').innerHTML=
     '<div style="font-weight:700;font-size:17px;margin-bottom:16px">⚙️ 설정</div>'
     +titleSection
@@ -443,7 +431,6 @@ function saveSubTitle(){
 function toggleSubTitle(){
   titleCfg.showSub=!titleCfg.showSub;saveTitleCfg();applyTitle();renderSettings();
 }
-
 function addLocation(){
   var v=document.getElementById('new-loc').value.trim();
   if(!v)return;
@@ -457,7 +444,6 @@ function editLocation(i){
 function deleteLocation(i){
   if(confirm('"'+locations[i]+'" 삭제할까요?')){locations.splice(i,1);saveLocations();renderSettings();}
 }
-
 function addSub(){
   var v=document.getElementById('new-sub').value.trim();
   if(!v)return;
@@ -478,7 +464,6 @@ function deleteSub(i){
   if(confirm('"'+subs[settingCat][i]+'" 삭제할까요?')){subs[settingCat].splice(i,1);saveSubs();renderSettings();}
 }
 function updatePao(sub,val){pao[sub]=parseInt(val)||12;savePao();renderSettings();}
-
 function resetAll(){
   if(confirm('모든 데이터를 초기화할까요?')){
     items=DEFAULT_ITEMS.slice();
@@ -491,7 +476,6 @@ function resetAll(){
     goTab('home',document.querySelector('.tab'));
   }
 }
-
 function fillSubs(cat){
   document.getElementById('f-sub').innerHTML=(subs[cat]||[]).map(function(s){return'<option value="'+s+'">'+s+'</option>';}).join('');
 }
@@ -516,8 +500,7 @@ function openModal(category){
   document.getElementById('f-opened').value='';
   document.getElementById('f-note').value='';
   document.getElementById('f-cat').value=category||'food';
-  onCatChange();
-  fillLocations('');
+  onCatChange();fillLocations('');
   document.getElementById('modal').classList.add('show');
 }
 function closeModal(e){
@@ -527,19 +510,14 @@ function closeModal(e){
 function saveItem(){
   var name=document.getElementById('f-name').value.trim();
   if(!name){alert('제품명을 입력해주세요');return;}
-  var newItem={
-    id:Date.now(),
-    name:name,
+  items.push({id:Date.now(),name:name,
     category:document.getElementById('f-cat').value,
     sub:document.getElementById('f-sub').value,
     location:document.getElementById('f-location').value,
     expiry:document.getElementById('f-expiry').value,
     openedDate:document.getElementById('f-opened').value,
-    note:document.getElementById('f-note').value.trim()
-  };
-  items.push(newItem);
-  saveItems();
-  closeModal();
+    note:document.getElementById('f-note').value.trim()});
+  saveItems();closeModal();
   goTab('list',document.querySelectorAll('.tab')[1]);
 }
 
